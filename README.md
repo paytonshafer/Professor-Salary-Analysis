@@ -8,6 +8,4 @@ many popular data sets. This data was collected by S. Weisberg for his book Appl
 tenure-track professors at a small college.
 
 ## Usage
-To read the paper simply open up the html document if you web browser of choice. The html file is compiled from the rmd file which contains all the source
-code for the paper. To see all of the code I used within the project look in project.r, this contains the code used to anaylize the data on professors salary.
-To run that code, open it in Rstudio and run the blocks you would like to see.
+To read the paper simply open up PaytonShafer.nb.html in your web browser of choice. The html file is compiled from the rmd file, PaytonShafer.rmd, which contains all the source code for the paper. To see all of the code I used within the project look in project.r, this contains the code used to anaylize the data on professors salary. To run that code, open it in Rstudio and run the blocks you would like to see.
