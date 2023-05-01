@@ -1,0 +1,484 @@
+---
+title: "STAT383 Final Project"
+author: "Payton Shafer"
+date: "12/7/2022"
+output: html_notebook
+---
+
+## Introduction
+#### College professors are seen to be some of the smartest people in the world. Most of which have aquired a graduate degree, a masters or a doctarate, that has required an immense amount of work, dedication and intelligence. Professors often work for years and years after they earn their degree to teach and do research. While teaching for universities and colleges professors aqruire ranks. These ranks inclued assistant professor, associate professor, and full professor. A professor gets these ranks by working and eventually being promoted by the university or college they are employed at. Professors come in all shapes and sizes, there are old and young professors and male and female professors. They all have the same thing in common though and that us there immense experience. A professors experience comes from a few main things. The first is the degree they have and how long they've had it for, the longer a professor has had their degree the more they have worked with material in their respective feild. This of course would lead to the said professor having more experience, next is their rank. The higher a professors rank is the longer they have been working in their feild which yeilds even more experience. 
+#### Many other factors add to the experience that a professor has but the key ones are the degree they have, how long they've had their degree, the rank they have, and how long they have had their current rank. The data set will include these essential factors for calculating experience. The data set also contains the professors salaries and it will be examined how a professors experience affects their salary. Professors also have one other factor that may affect their salries and that is their sex. It has been seen that on average female professors are payed less than their male counterparts. Using the data this claim will be investigated and answered.
+
+#### The data was retreived from data.princeton.edu, this a website that contains many popular data sets. This data was collected by S. Weisberg for his book Applied Linear Regression in 1985 and contains the information of 52 tenure-track professors at a small college. 
+
+#### In this report it will be decided how experience effects a professors salary. This will be decided by using data accross multiple statistics such as degree, years at degree, rank, and years at rank. Whether or not there is a discrimination between women and male salaries for college professors will also be answered.
+
+## Methods and Results
+### Manipulating the Data Set
+#### The first thing to do is to manipulate the data set. When the data is first read in it has the titles of the columns as the first row and the data for sex, rank, and degree are stored as characters. Below is the data set when it is first read in.
+
+```{r}
+library(tidyverse)
+library(ggplot2)
+
+#read file
+salary = as_tibble(read.table("/Users/paytonshafer/Desktop/STAT383/Project/salary.txt"))
+salary
+```
+
+#### To manipulate the data next is to rename the columns of the tibble so that they correspond with the data in the column. That is done by using the rename method on all of the columns. Next, is to remove the first row so that there is only data in the tibble, that is done by just removing the first row. Then, years at rank, years at degree, and salary need to be turned from characters to integers, this is done with the as integer method. Lastly, the columns with sex, rank and degree need to be changed to a number instead of characters. To do this the strings will be encoded in the following way. For sex, it will be 0 for male and 1 for female. For rank, it will be 1 for assistant professor, 2 for associate professor and 3 for full professor. Lastly for degree, it will be encoded as 0 for masters and 1 for doctorate. This is done by changing the type of the column to integers then going though the column and checking what data is there and converting it to the properly encoded integer. The following code that will do this and the edited data set are shown below.
+
+```{r}
+#rename columns
+salary = rename(salary, "sx" = V1, "rk" = V2, "yr" = V3, "dg" = V4, "yd" = V5, "sl" = V6)
+#removes top column with column names
+salary = salary[-c(1),]
+#when it is read in it is read in as a char so we have to turn them to ints
+salary$sl = as.integer(salary$sl)
+#does it again for yr and yd
+salary$yr = as.integer(salary$yr)
+salary$yd = as.integer(salary$yd)
+
+#changing sex, rank and degree to numerical values
+#sex
+sex = salary$sx
+salary$sx = as.integer(salary$sx)
+count = 1
+salary$sx[0] = 0
+for (i in sex){
+  if(i == "male"){
+    salary$sx[count] = 0
+  }else{
+    salary$sx[count] = 1
+  }
+  count = count + 1
+}
+salary$sx = as.integer(salary$sx)
+
+
+#rank
+rank = salary$rk
+salary$rk = as.integer(salary$rk)
+count = 1
+salary$rk[0] = 3
+for (i in rank){
+  if(i == "assistant"){
+    salary$rk[count] = 1
+  }else if(i == "associate"){
+    salary$rk[count] = 2
+  }else{
+    salary$rk[count] = 3
+  }
+  count = count + 1
+}
+salary$rk = as.integer(salary$rk)
+
+#degree
+degree = salary$dg
+salary$dg = as.integer(salary$dg)
+count = 1
+salary$dg[0] = 1
+for (i in degree){
+  if(i == "masters"){
+    salary$dg[count] = 0
+  }else{
+    salary$dg[count] = 1
+  }
+  count = count + 1
+}
+salary$dg = as.integer(salary$dg)
+salary
+```
+
+### Checking if a Linear Model Should be Used
+#### The next thing to do is check if a linear model is the right fit for the relationships that are being examined. First, the relationship between salary and years at rank will be explored. The first thing to is take a look at the scatter plot and the correlation of these variables, the results are as follows.
+
+```{r}
+#show scatter plot
+ggplot(salary, aes(yr, sl)) + geom_point()
+#Check for correlation
+cor(salary$sl,salary$yr)
+```
+
+#### Since the correlation is close to one there must be a strong positive relationship between salary and years at rank. But, to be sure that a linear model is sufficient a hypothesis test, at a level of alpha = .01, will be conducted. The following code creates the linear model then runs a hypothesis test to ensure the linear relationship between salary and years at rank.
+
+```{r}
+#create model
+slVyr = lm(sl ~ yr, salary)
+
+#hypothesis test:
+#{H0:B1 = 0, H1:B1 not= 0}
+#alpha = .01
+summary(slVyr)
+#At a level of alpha = .01, since 7.34e-09 < .01 there is enough evidence to reject the null
+```
+
+#### Since the null is rejected that mean there is a linear relationship between salary and years at rank. There are four more things to check until we can be 100% sure that a linear model is the best fit. The first two things to check comes from the residuals vs fitted graph. Using this graph, linearity and constant variance are able to be checked. Take a look at the graph shown below.
+
+```{r}
+#check linearity and constant variance
+plot(slVyr, 1)
+```
+
+#### When checking linearity the key is the red line. If the red line is relativly flat, one says that there is linearity, otherwise there is not. For this plot, cleary the red line is relativly flat so one can say that this relationship has linearity. Next to check for constant variation, one takes a look at all the dots and ensures that they are around the dotted line at 0. For this plot all of the points are close to that line so one can say this relationship has constant variance. Next, a normal Q-Q plot is used to check that epsilon is normally distributed, this plot is shown below.
+
+```{r}
+#check epsilon normally distributed
+plot(slVyr,2)
+```
+
+#### For epsillon to be normally distributed all of the points on the Q-Q plot must be on or close to the dotted line. Cleary in this case all of our data is on or very close to the dotted line so epsilon must be normally distributed. The last thing to check is for any outliers. This is done using a residuals vs leverage plot. The plot is shown below.
+
+```{r}
+#check for outliers
+plot(slVyr,5)
+```
+
+#### The way an outlier is shown is if the point is an outlier it will be under the dotted line is the bottom right corner or above the dotted line is the top right corner. Clearly there are no outliers with our data. Since this relationship passed all the tests, it is clear that salary and years at rank have a linear relationship so a linear model will be used to examine their relationship.
+
+#### Second, the relationship between salary and years at degree will be explored. The first thing to is take a look at the scatter plot and the correlation of these variables, the results are as follows.
+
+```{r}
+#show scatter plot
+ggplot(salary, aes(yd, sl)) + geom_point()
+#Check for correlation
+cor(salary$sl,salary$yd)
+```
+
+#### Since the correlation is close to one there must be a strong positive relationship between salary and years at rank. But, to be sure that a linear model is sufficient a hypothesis test, at a level of alpha = .01, will be conducted. The following code creates the linear model then runs a hypothesis test to ensure the linear relationship between salary and years at rank.
+
+```{r}
+#create model
+slVyd = lm(sl ~ yd, salary)
+
+#hypothesis test:
+#{H0:B1 = 0, H1:B1 not= 0}
+#alpha = .01
+summary(slVyd)
+#At a level of alpha = .01, since 4.1e-08 < .01 there is enough evidence to reject the null
+```
+
+#### Since the null is rejected that mean there is a linear relationship between salary and years at rank. There are four more things to check until we can be 100% sure that a linear model is the best fit. The first two things to check comes from the residuals vs fitted graph. Using this graph, linearity and constant variance are able to be checked. Take a look at the graph shown below.
+
+```{r}
+#check linearity and constant variance
+plot(slVyd, 1)
+```
+
+#### When checking linearity the key again is the red line. This is checked the same way as was done above and cleary the red line is relativly flat so one can say that this relationship has linearity. Next to check for constant variation, one takes a look at all the dots and ensures that they are around the dotted line at 0. For this plot all of the points are close to that line so one can say this relationship has constant variance. Next, a normal Q-Q plot is used to check that epsilon is normally distributed, this plot is shown below.
+
+```{r}
+#check epsilon normally distributed
+plot(slVyd,2)
+```
+
+#### For epsillon to be normally distributed all of the points on the Q-Q plot must be on or close to the dotted line. Cleary in this case all of our data is on or very close to the dotted line so epsilon must be normally distributed. The last thing to check is for any outliers. This is done using a residuals vs leverage plot. The plot is shown below.
+
+```{r}
+#check for outliers
+plot(slVyd,5)
+```
+
+#### This graph can be interpreted the same way as above. Clearly there are no outliers with our data. Since this relationship passed all the tests, it is clear that salary and years at degree have a linear relationship so a linear model will be used to examine their relationship.
+
+### Linear Models
+#### Since we have shown that linear model is appropriate for the relationship between salary and years at rank and the relationship between salary and years at degree take a look at the models shown below. The first 2 plots represent the relationship between salary and years at rank.
+
+```{r}
+ggplot(salary, aes(yr, sl)) + geom_point() + geom_abline(intercept = 18166.1, slope = 752.8) + 
+    labs(title = "Salary vs Years at Rank", x = "Years at Rank", y = "Salary")
+ggplot(salary, aes(yr, sl)) + geom_smooth(method = "lm") + 
+    labs(title = "Salary vs Years at Rank", x = "Years at Rank", y = "Salary")
+```
+
+#### Looking at these graphs one can see how as years at rank increases so does the salary in respect to the years at rank. This makes sense since spending more years at the rank should correspond to more experience and more experience and time with the college will lead to a larger salary. One can say that salary and years at rank are proportional so as one's years at rank increases their salary should as well. These next 2 plots represent the relationship between salary and years at degree.
+
+```{r}
+ggplot(salary, aes(yd, sl)) + geom_point() + geom_abline(intercept = 17502.26, slope = 390.65) + 
+    labs(title = "Salary vs Years at Degree", x = "Years at Degree", y = "Salary")
+ggplot(salary, aes(yd, sl)) + geom_smooth(method = "lm") + 
+    labs(title = "Salary vs Years at Degree", x = "Years at Degree", y = "Salary")
+
+```
+
+#### When examining these graphs we see a similar relationship to salary vs years at rank. Since years at degree also corresponds to experience it makes sense that with more years at a degree level will lead to a higher salary. This linear model line is more flat than the line for salary vs rank. This is because a professor with a masters degree will make less than a professor with a doctorate even if they have the same amount of years at the degree level. This is due to the fact that a doctorate is a higher level degree than a masters and requires more schooling, and as a result the professor with a doctorate will be payed a higher salary.
+
+### Linear Models Filtered by Sex, Degree, and Rank
+#### The next part to examine is how our linear models will differ when we filter them to have specific sexes, ranks, and degrees. The first set to be examined is the linear models being filtered for each sex. The following plots show salary vs years at rank filtered by each sex then both faceted together, the 0 graph represents male and the 1 graph represents female.
+
+```{r}
+salary %>%
+  filter(sx == 0) %>%
+  ggplot(aes(yr, sl)) +  geom_point() + geom_abline(intercept = 18166.1, slope = 752.8) + 
+  labs(title = "Male: Salary vs Years at Rank", x = "Years at Rank", y = "Salary")
+
+salary %>%
+  filter(sx == 1) %>%
+  ggplot(aes(yr, sl)) +  geom_point() + geom_abline(intercept = 18166.1, slope = 752.8) + 
+  labs(title = "Female: Salary vs Years at Rank", x = "Years at Rank", y = "Salary")
+
+ggplot(salary, aes(yr, sl)) + geom_point() + geom_abline(intercept = 18166.1, slope = 752.8) + 
+  labs(title = "Both Sexes: Salary vs Years at Rank", x = "Years at Rank", y = "Salary") + facet_wrap(vars(sx))
+
+```
+
+#### When comparing these two plots we see that there are no female professors have a years ar rank higher than 10. Because of this it is hard to compare the males and females salaries vs their rank. So to compare them only look at the men who have a years at rank less thank 10. When this is done is is clear that the male and female salaries are similar when examined vs their years at rank, for years at rank less than 10. Next, the following plots show salary vs years at degree filtered for each sex then both faceted together.
+
+```{r}
+salary %>% 
+  filter(sx == 0) %>%
+    ggplot(aes(yd, sl)) + geom_point() + geom_abline(intercept = 17502.26, slope = 390.65, col = "blue") + 
+      labs(title = "Male: Salary vs Years at Degree", x = "Years at Degree", y = "Salary")
+
+salary %>%
+  filter(sx == 1) %>%
+    ggplot(aes(yd, sl)) + geom_point() + geom_abline(intercept = 17502.26, slope = 390.65, col = "blue") + 
+      labs(title = "Female: Salary vs Years at Degree", x = "Years at Degree", y = "Salary")
+
+ggplot(salary, aes(yd, sl)) + geom_point() + geom_abline(intercept = 17502.26, slope = 390.65, col = "blue") + 
+  labs(title = "Both Sexes: Salary vs Years at Degree", x = "Years at Degree", y = "Salary") + facet_wrap(vars(sx))
+```
+
+#### Here we see a different result than we did for salary vs years at rank. Here there are males and females for the whole range of years at degree. When looking at the points compared to the line that the linear model created, one can see how males and females differ. For the male salaries, especially as years at degree increases, most of their salaries are above the line from the linear model. While for the females one can see that most of their salaries are below the line created by the linear model. Because of this it is fair to say that even at the same years at degree, some male professors will be payed more than the female professors. Now, the linear models will be filtered by their rank. The following plots show salary vs years at rank filtered by each rank then all ranks faceted together, the 1 graph represents assistant, the 2 graph represents associate and the 3 graph represents full.
+
+```{r}
+salary %>%
+  filter(rk == 1) %>%
+  ggplot(aes(yr, sl)) +  geom_point() + geom_abline(intercept = 18166.1, slope = 752.8) + 
+  labs(title = "Assistant: Salary vs Years at Rank", x = "Years at Rank", y = "Salary")
+
+salary %>%
+  filter(rk == 2) %>%
+  ggplot(aes(yr, sl)) +  geom_point() + geom_abline(intercept = 18166.1, slope = 752.8) + 
+  labs(title = "Associate: Salary vs Years at Rank", x = "Years at Rank", y = "Salary")
+
+salary %>%
+  filter(rk == 3) %>%
+  ggplot(aes(yr, sl)) +  geom_point() + geom_abline(intercept = 18166.1, slope = 752.8) + 
+  labs(title = "Full: Salary vs Years at Rank", x = "Years at Rank", y = "Salary")
+
+ggplot(salary, aes(yr, sl)) + geom_point() + geom_abline(intercept = 18166.1, slope = 752.8) + 
+  labs(title = "All Ranks: Salary vs Years at Rank", x = "Years at Rank", y = "Salary") + facet_wrap(vars(rk))
+
+```
+
+#### Here the data is exactly what you would expect. As ones rank increases so does their salary, this is shown by the salaries for each rank increasing for the three different plots. Within each rank one can also see how a professor's salary increases as their years at rank increases. Next, these follwing plots show salary vs years ar degree filtered foe each rank then all the ranks faceted together. 
+
+```{r}
+salary %>% 
+  filter(rk == 1) %>%
+  ggplot(aes(yd, sl)) + geom_point() + geom_abline(intercept = 17502.26, slope = 390.65, col = "blue") + 
+  labs(title = "Assistant: Salary vs Years at Degree", x = "Years at Degree", y = "Salary")
+
+salary %>%
+  filter(rk == 2) %>%
+  ggplot(aes(yd, sl)) + geom_point() + geom_abline(intercept = 17502.26, slope = 390.65, col = "blue") + 
+  labs(title = "Associate: Salary vs Years at Degree", x = "Years at Degree", y = "Salary")
+
+salary %>%
+  filter(rk == 3) %>%
+  ggplot(aes(yd, sl)) + geom_point() + geom_abline(intercept = 17502.26, slope = 390.65, col = "blue") + 
+  labs(title = "Full: Salary vs Years at Degree", x = "Years at Degree", y = "Salary")
+
+ggplot(salary, aes(yd, sl)) + geom_point() + geom_abline(intercept = 17502.26, slope = 390.65, col = "blue") + 
+  labs(title = "All Ranks: Salary vs Years at Degree", x = "Years at Degree", y = "Salary") + facet_wrap(vars(rk))
+
+```
+
+#### Again, this data comes out exactly as youd expect. The professors with a higher rank will in turn have a higher salary. It also goes to say that professors with a high years at degree also have a higher salary. So cleary the salary of a professor will depend on their rank and their years at degree. Last to be examined is the linear models being filtered for each degree. The following plots show salary vs years at rank filtered by each degree then both faceted together, the 0 graph represents masters and the 1 graph represents doctorate.
+
+```{r}
+salary %>%
+  filter(dg == 0) %>%
+  ggplot(aes(yr, sl)) +  geom_point() + geom_abline(intercept = 18166.1, slope = 752.8) + 
+  labs(title = "Masters: Salary vs Years at Rank", x = "Years at Rank", y = "Salary")
+
+salary %>%
+  filter(dg == 1) %>%
+  ggplot(aes(yr, sl)) +  geom_point() + geom_abline(intercept = 18166.1, slope = 752.8) + 
+  labs(title = "Doctarate: Salary vs Years at Rank", x = "Years at Rank", y = "Salary")
+
+ggplot(salary, aes(yr, sl)) + geom_point() + geom_abline(intercept = 18166.1, slope = 752.8) + 
+  labs(title = "Both Degrees: Salary vs Years at Rank", x = "Years at Rank", y = "Salary") + facet_wrap(vars(dg))
+
+```
+
+#### Once again, this data shows exacly what one would expect. Professors with a doctorate will make more than a professor with a masters even if they have the same years at rank. This again relates to the notion of experience and how a professor with a doctorate will have more experience than a professor with a masters while both are at the same rank. Next, the folowing plots show salary vs years at degree filtered by each degree then both faceted together.
+
+```{r}
+salary %>% 
+  filter(dg == 0) %>%
+  ggplot(aes(yd, sl)) + geom_point() + geom_abline(intercept = 17502.26, slope = 390.65, col = "blue") + 
+  labs(title = "Masters: Salary vs Years at Degree", x = "Years at Degree", y = "Salary")
+
+salary %>%
+  filter(dg == 1) %>%
+  ggplot(aes(yd, sl)) + geom_point() + geom_abline(intercept = 17502.26, slope = 390.65, col = "blue") + 
+  labs(title = "Doctarate: Salary vs Years at Degree", x = "Years at Degree", y = "Salary")
+
+ggplot(salary, aes(yd, sl)) + geom_point() + geom_abline(intercept = 17502.26, slope = 390.65, col = "blue") + 
+  labs(title = "Both Degrees: Salary vs Years at Degree", x = "Years at Degree", y = "Salary") + facet_wrap(vars(dg))
+```
+
+#### Here one can see how a higher degree, having a doctorate over a masters, will result in a higher salary. This again comes from the notion of experience and how a doctorate will show more experience than a masters for two professors that have different degrees but the same years at degree. It will then follow that the professor with more experience will be payed more.
+
+### Salary vs Degree
+#### Now salary will be examined vs the two degrees. Below is a plot for both degrees on on graph then a graph for each degree by itself.
+
+```{r}
+ggplot(salary, aes(dg, sl)) + geom_point() +
+  labs(title = "Salary vs Degree", subtitle = "0 = Masters, 1 = Doctorate", x = "Degree", y = "Salary")
+mast = salary %>% filter(dg == 0) 
+ggplot(mast, aes(dg, sl)) + geom_point() +
+  labs(title = "Salaries of Professors with Masters", x = "Professors with Masters", y = "Salary")
+doct = salary %>% filter(dg == 1 ) %>% filter(yd > 5) #filter out bc they dragged salary down
+ggplot(doct, aes(dg, sl)) + geom_point() +
+  labs(title = "Salaries of Professors with Doctorate", x = "Professors with Doctorate", y = "Salary")
+```
+
+#### Here one can see the relationship he described earlier which is that a higher degree will result in a higher salary. If we take a look of the mean of each salaries by degree we get the following.
+
+```{r}
+mean(mast$sl)
+mean(doct$sl)
+```
+
+#### This data goes to show the point even more since the average salary of a professor with a doctorate is $27,096.27 while the average salary of a professor with a masters is $24,359.22, which is clearly less than the former mean. This shows clear correlation between high salary and a higher degree. Next, the salary vs degree plot will be filtered for each sex to see how salaries of each sex vary within degrees. Below is the graph for both sexes together than a graph for just males and just females with a masters degree, and the mean salary for both of those plots.
+
+```{r}
+#all degrees by sx
+ggplot(salary, aes(dg, sl)) + geom_point() + facet_wrap(vars(sx)) +
+  labs(title = "Salary vs Degree", subtitle = "0 = Masters, 1 = Doctorate (0 Graph for Males, 1 Graph for Females)", x = "Degree", y = "Salary")
+
+#sl vs mast males
+mast = salary %>% filter(dg == 0) %>% filter(sx == 0)
+ggplot(mast, aes(dg, sl)) + geom_point() + 
+  labs(title = "Salaries of Male Professors with Masters", x = "Male Professors with Masters", y = "Salary")
+mean(mast$sl)
+#sl vs mast females
+mast = salary %>% filter(dg == 0) %>% filter(sx == 1)
+ggplot(mast, aes(dg, sl)) + geom_point() + 
+  labs(title = "Salaries of Female Professors with Masters", x = "Female Professors with Masters", y = "Salary")
+mean(mast$sl)
+```
+
+#### Here one can see that in general the salary for a female with a masters is lower than a man with a masters. The mean salary for male professors with a masters is $24,916.14 while the mean salary for female professors with a masters is $22,410, which is less than the males mean. But for this data there are not many women with masters compared to the men but the mean salaries of men is still larger than the women. This will now be checked for male and female professors with a doctorate. The mean salaries will also be shown again for these plots.
+
+```{r}
+#sl vs doct males
+doct = salary %>% filter(dg == 1) %>% filter(sx == 0)
+ggplot(doct, aes(dg, sl)) + geom_point() + 
+  labs(title = "Salaries of Male Professors with Doctorate", x = "Male Professors with Doctorate", y = "Salary")
+mean(doct$sl)
+#sl vs doct females
+doct = salary %>% filter(dg == 1) %>% filter(sx == 1)
+ggplot(doct, aes(dg, sl)) + geom_point() + 
+  labs(title = "Salaries of Female Professors with Doctorate", x = "Female Professors with Doctorate", y = "Salary")
+mean(doct$sl)
+```
+
+#### Here this is a similar result as seen above for professors with masters degrees. The mean salary for male professors with a doctorate is $24,568.83 while the mean salary for female professors with a doctorate is $20,936,  which is less than the males mean. This has a much stronger say than the prevous discovery since there are a lot of data points for male and females. So it is fair to say that female professors with a doctorate on average get payed less than male professors with a doctorate.
+
+### Salary vs Rank
+#### Lastly, the relationship between salary and rank will be explored. Below is a plot for all ranks on one graph then a graph for each rank by itself.
+
+```{r}
+ggplot(salary, aes(rk, sl)) + geom_point() + 
+  labs(title = "Salary vs Rank", subtitle = "1 = Assistant, 2 = Associate, 3 = Full", x = "Rank", y = "Salary")
+assis = salary %>% filter(rk == 1)
+ggplot(assis, aes(rk, sl)) + geom_point() + 
+  labs(title = "Salary vs Rank", subtitle = "1 = Assistant, 2 = Associate, 3 = Full", x = "Rank", y = "Salary")
+assoc = salary %>% filter(rk == 2)
+ggplot(assoc, aes(rk, sl)) + geom_point() + 
+  labs(title = "Salary vs Rank", subtitle = "1 = Assistant, 2 = Associate, 3 = Full", x = "Rank", y = "Salary")
+full = salary %>% filter(rk == 3)
+ggplot(full, aes(rk, sl)) + geom_point() + 
+  labs(title = "Salary vs Rank", subtitle = "1 = Assistant, 2 = Associate, 3 = Full", x = "Rank", y = "Salary")
+```
+
+#### Here once can see the clear relationship between salary and rank. As ones rank increases their salary does as well. For a professor your rank is assigned by how much experience you have. This goes to further the fact that the more experience one has the higher their salary will be. Now look at the mean salaries for each of the three ranks.
+
+```{r}
+mean(assis$sl)
+mean(assoc$sl)
+mean(full$sl)
+```
+
+#### The assistants have a mean salary of $17,768.67, the associates have a mean salary of $23,175.93, and the full professors have a mean salary of $29,658.95. These mean salaries yet again reiterate the point that a higher rank correlates to a higher salary. Now each rank will be examined by filtering each sex. Below is a plot of all of the ranks faceted for each sex.
+
+```{r}
+#All ranks by sex
+ggplot(salary, aes(rk, sl)) + geom_point() + facet_wrap(vars(sx)) +
+  labs(title = "Salary vs Rank", subtitle = "1 = Assistant, 2 = Associate, 3 = Full (0 Graph for Males, 1 Graph for Females)", x = "Rank", y = "Salary")
+```
+#### Here one can see that there is a difference between the male and female salaries at each rank. For each rank the mean of the salaries for male and females will be calculated and compared. First, the relationship within the assistant professors will be examined. Below shows the plots of the salaries of the male and female assistant professors along with the means.
+
+```{r}
+#sl vs assis males 
+assis = assis %>% filter(sx == 0)
+ggplot(assis, aes(rk, sl)) + geom_point() +
+  labs(title = "Salaries of Male Assistant Professors", x = "Male Assistant Professors", y = "Salary")
+mean(assis$sl)
+#sl vs assis females 
+assis = salary %>% filter(rk == 1) %>% filter(sx == 1)
+ggplot(assis, aes(rk, sl)) + geom_point() +
+  labs(title = "Salaries of Female Assistant Professors", x = "Female Assistant Professors", y = "Salary")
+mean(assis$sl)
+```
+
+#### Here the salary break down for male and female looks very equal. The mean salary for male assistant professors is $17,919.60 while the mean salary for female assistant professors us $17,580.00. Although these values are very close the mean salary for female's is yet again lower than the males. Next this relationship will be shown for associate professors. The following plots show the salaries of the male and female associate professors along with the means.
+
+```{r}
+#sl vs assoc males 
+assoc = assoc %>% filter(sx == 0)
+ggplot(assoc, aes(rk, sl)) + geom_point() +
+  labs(title = "Salaries of Male Associate Professors", x = "Male Associate Professors", y = "Salary")
+mean(assoc$sl)
+#sl vs assoc females 
+assoc = salary %>% filter(rk == 2) %>% filter(sx == 1)
+ggplot(assoc, aes(rk, sl)) + geom_point() +
+  labs(title = "Salaries of Female Associate Professors", x = "Female Associate Professors", y = "Salary")
+mean(assoc$sl)
+```
+
+#### For this case the mean salary for the male associate professors is $23,443.58 and the mean salary for the male associate professors is $21,570.00. Again the male salaries are higher than the female salaries. But for the associates the female population is small so this makes our means less valuable. Lastly, the full professors will be explored. The following plots show the salaries of the male and female full professors along with the means.
+
+```{r}
+#sl vs full males 
+full = full %>% filter(sx == 0)
+ggplot(full, aes(rk, sl)) + geom_point() +
+  labs(title = "Salaries of Male Full Professors", x = "Male Full Professors", y = "Salary")
+mean(full$sl)
+#sl vs full females
+full = salary %>% filter(rk == 3) %>% filter(sx == 1)
+ggplot(full, aes(rk, sl)) + geom_point() +
+  labs(title = "Salaries of Female Full Professors", x = "Female Full Professors", y = "Salary")
+mean(full$sl)
+```
+
+#### $29,872.44.00 is the mean salary for male full professors while $28,805.00 is the mean salary for female full professors. Here one can see yet again that even though the professors are placed at the same rank the female salries are lower than their male counterpart. This goes to show that female professors, no matter the rank, are payed less than the male professor.
+
+### Hypothesis test
+#### The U.S. Department of Education keeps statistics of professors salaries dating back to 1970. The data set being worked with is professors salaries from the year 1985. When looking at the statistics for professors in 1985 the mean salaries for assistant, associate, and full professors are $24,668.00, $29,945.00, and $39,743.00 respectivley. So this means the mean value of college professors salaries in 1985 is $31452.00. Using the dataset from this report a 6 step hypothesis test will be prefromed for H0: Mu = $31452.00 versus H1: Mu not= $31452.00 using alpha = .01.
+```{r}
+#compute the test statistic
+xbar = mean(salary$sl)
+muNot = 31452
+S = sd(salary$sl)
+n = 52
+tstat = (xbar - muNot)/(S/sqrt(n))
+#compute p-val
+pval = 2*pnorm(tstat)
+pval
+```
+#### Through these calculations a p-value of 1.079215e-20 is obtained. Clearly 1.079215e-20 < 0.01 so the p-value < alpha which means we reject the null hypothesis. At a level of alpha = 0.01 there is enough evidence to reject the null hypothesis that the mean salary for college professors in 1985 is $31452.00.
+
+## Conclusions
+#### To conclude the study it is clear that there is a relationship between experience and salary. It was shown that years at rank and years at degree have a linear relationship to salary and as one increases the other does. It was also shown that as ones rank and degree level increases their salary level will too. Since these 4 major factors of experience have clear relationships to the salary the professor earned. It is clear that there is enough evidance to show the relationship between experience and salary is there and strong.
+
+#### It was also shown that there is some discrimination of salary due to the sex of the professor. When comparing different variable while being filtered by sex some variables had an uneven amount of male and female professors. Due to that some of the salary means may be biased but there was still enough evidence from the non-biased relationships to show some discrimination of salary by sex for college professors. To improve the study of this claim a data set with a large and equal number of male and female professors would be used to allow for better comparisons of male and female salaries. To further extend this research the age of a professor could be considered as a factor for experience to see if their was a relationship between salary and a professors age.
+
+
+## References
+#### S. Weisberg (1985). Applied Linear Regression, Second Edition. New York: John Wiley and Sons. Page 194. Downloaded from https://grodri.github.io/glms/datasets/#salary (http://data.princeton.edu/wws509/datasets) on November 30, 2022.
+#### U.S. Department of Education, National Center for Education Statistics, Higher Education General Information Survey (HEGIS), "Faculty Salaries, Tenure, and Fringe Benefits" surveys, 1970-71 through 1985-86; and 1987-88 through 2009-10 Integrated Postsecondary Education Data System, "Salaries, Tenure, and Fringe Benefits of Full-Time Instructional Faculty Survey" (IPEDS-SA:87-99), and Winter 2001-02 through Winter 2009-10. (This table was prepared August 2010. Downloaded from https://nces.ed.gov/programs/digest/d10/tables/dt10_267.asp on December 1, 2022
